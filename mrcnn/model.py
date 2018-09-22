@@ -2626,7 +2626,7 @@ class MaskRCNN():
 
         # Extract boxes, class_ids, scores, and class-specific masks
         boxes = detections[:N, :4]
-        class_ids = detections[:N, 4].astype(np.int32)
+        class_ids = tf.cast(detections[:N, 4], tf.int32)
         scores = detections[:N, 5]
 
         # Translate normalized coordinates in the resized image to pixel
@@ -2650,7 +2650,6 @@ class MaskRCNN():
             boxes = np.delete(boxes, exclude_ix, axis=0)
             class_ids = np.delete(class_ids, exclude_ix, axis=0)
             scores = np.delete(scores, exclude_ix, axis=0)
-            N = class_ids.shape[0]
 
         return boxes, class_ids, scores
 
