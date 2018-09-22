@@ -1288,6 +1288,15 @@ def mrcnn_bbox_loss_graph(target_bbox, target_class_ids, pred_bbox):
     loss = K.mean(loss)
     return loss
 
+def get_final_detections(detection, meta_dict, i):
+    final_rois, _, final_scores, _ = unmold_detections(detection, meta_dict["original_image_shape"][i],
+                                                       meta_dict["image_shape"][i], meta_dict["window"][i])
+    return {
+        "rois": final_rois,
+        "scores": final_scores
+    }
+    lambda i, detections, meta_dict: tf.add(i, 1)
+
 def comp_loss_graph(input_gt_boxes, input_image_meta, detections):
     """
     Loss for Mask R-CNN bounding box refinement.
@@ -1295,9 +1304,29 @@ def comp_loss_graph(input_gt_boxes, input_image_meta, detections):
     """
     meta_dict = parse_image_meta_graph(input_image_meta)
     results = []
-    for i in range(tf.shape(input_image_meta)[0]):
+    """
+    import collections
+    Pair = collections.namedtuple('Pair', 'j, k')
+
+    ijk_0 = (tf.constant(0), Pair(tf.constant(1), tf.constant(2)))
+
+    cond = lambda i, p: tf.less(i, input_image_meta[0])
+
+    b = lambda i, p: (i + 1, Pair((p.j + p.k), (p.j - p.k)))
+
+    ijk_final = tf.while_loop(c, b, ijk_0)
+    """
+
+    """
+    i = tf.constant(0)
+    cond = lambda i, detections, meta_dict: tf.less(i, input_image_meta[0])
+    body = get_final_detections
+    r = tf.while_loop(cond, body, (i, detections, meta_dict))
+    """
+    for i in range(tf.shape(input_image_meta).eval()[0]):
         final_rois, _, final_scores, _ = unmold_detections(detections[i], meta_dict["original_image_shape"][i],
                                                            meta_dict["image_shape"][i], meta_dict["window"][i])
+
         results.append({
             "rois": final_rois,
             "scores": final_scores
