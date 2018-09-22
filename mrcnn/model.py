@@ -1293,10 +1293,11 @@ def comp_loss_graph(input_gt_boxes, input_image_meta, detections):
     Loss for Mask R-CNN bounding box refinement.
 
     """
+    meta_dict = parse_image_meta_graph(input_image_meta)
     results = []
-    for i, image_meta in enumerate(input_image_meta):
-        final_rois, _, final_scores, _ = unmold_detections(detections[i], image_meta["original_image_shape"],
-                                                           image_meta["image_shape"], image_meta["window"])
+    for i in range(tf.shape(input_image_meta)[0]):
+        final_rois, _, final_scores, _ = unmold_detections(detections[i], meta_dict["original_image_shape"][i],
+                                                           meta_dict["image_shape"][i], meta_dict["window"][i])
         results.append({
             "rois": final_rois,
             "scores": final_scores
