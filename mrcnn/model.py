@@ -1275,14 +1275,12 @@ def mrcnn_bbox_loss_graph(target_bbox, target_class_ids, pred_bbox):
     loss = K.mean(loss)
     return loss
 
-def comp_loss_graph(input_image, input_gt_boxes, input_image_meta, mrcnn_class, mrcnn_bbox, rpn_rois, config):
+def comp_loss_graph(input_image, input_gt_boxes, input_image_meta, detections):
     """
     Loss for Mask R-CNN bounding box refinement.
 
     """
     _, _, windows = mold_inputs(input_image)
-
-    detections = DetectionLayer(config)([rpn_rois, mrcnn_class, mrcnn_bbox, input_image_meta])
 
     results = []
     for i, image_meta in enumerate(input_image_meta):
@@ -2173,9 +2171,9 @@ class MaskRCNN():
                 [target_bbox, target_class_ids, mrcnn_bbox])
             mask_loss = KL.Lambda(lambda x: mrcnn_mask_loss_graph(*x), name="mrcnn_mask_loss")(
                 [target_mask, target_class_ids, mrcnn_mask])
+            detections = DetectionLayer(config)([rpn_rois, mrcnn_class, mrcnn_bbox, input_image_meta])
             comp_loss = KL.Lambda(lambda x: comp_loss_graph(*x), name="comp_loss")([input_image, input_gt_boxes,
-                                                                                    input_image_meta, mrcnn_class,
-                                                                                    mrcnn_bbox, rpn_rois, config])
+                                                                                    input_image_meta, detections])
 
             # Model
             inputs = [input_image, input_image_meta,
