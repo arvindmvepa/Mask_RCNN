@@ -139,6 +139,18 @@ def mold_inputs(images, config):
     windows = np.stack(windows)
     return molded_images, image_metas, windows
 
+def get_window(image, config):
+    """
+    """
+    _, window, _, _, _ = utils.resize_image(
+        image,
+        min_dim=config.IMAGE_MIN_DIM,
+        min_scale=config.IMAGE_MIN_SCALE,
+        max_dim=config.IMAGE_MAX_DIM,
+        mode=config.IMAGE_RESIZE_MODE)
+    return window
+
+
 def convert_to_kaggle_format(results, config):
     images_bboxs = []
     for r in results:
@@ -2170,7 +2182,8 @@ class MaskRCNN():
             mask_loss = KL.Lambda(lambda x: mrcnn_mask_loss_graph(*x), name="mrcnn_mask_loss")(
                 [target_mask, target_class_ids, mrcnn_mask])
             detections = DetectionLayer(config)([rpn_rois, mrcnn_class, mrcnn_bbox, input_image_meta])
-            _, _, windows = mold_inputs(input_image, config)
+            get_window_w_config = KL.Lambda(lambda x: get_window(x, config))
+            windows = tf.map_fn(get_window_w_config, input_image)
             comp_loss = KL.Lambda(lambda x: comp_loss_graph(*x), name="comp_loss")([input_gt_boxes,input_image_meta,
                                                                                     windows, detections])
 
