@@ -25,7 +25,7 @@ import keras.engine as KE
 import keras.models as KM
 
 from mrcnn import utils
-from rsna_kaggle_comp.metrics import tf_competition_metric
+from rsna_kaggle_comp.metric import tf_competition_metric
 
 # Requires TensorFlow 1.3+ and Keras 2.0.8+.
 from distutils.version import LooseVersion
