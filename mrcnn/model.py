@@ -139,6 +139,7 @@ def mold_inputs(images, config):
     windows = np.stack(windows)
     return molded_images, image_metas, windows
 
+
 def get_window(image, config):
     """
     """
@@ -1287,15 +1288,15 @@ def mrcnn_bbox_loss_graph(target_bbox, target_class_ids, pred_bbox):
     loss = K.mean(loss)
     return loss
 
-def comp_loss_graph(input_gt_boxes, input_image_meta, windows, detections):
+def comp_loss_graph(input_gt_boxes, input_image_meta, detections):
     """
     Loss for Mask R-CNN bounding box refinement.
 
     """
     results = []
     for i, image_meta in enumerate(input_image_meta):
-        final_rois, _, final_scores, _ = \
-            unmold_detections(detections[i], image_meta["original_image_shape"], image_meta["image_shape"], windows[i])
+        final_rois, _, final_scores, _ = unmold_detections(detections[i], image_meta["original_image_shape"],
+                                                           image_meta["image_shape"], image_meta["window"])
         results.append({
             "rois": final_rois,
             "scores": final_scores
@@ -2182,10 +2183,10 @@ class MaskRCNN():
             mask_loss = KL.Lambda(lambda x: mrcnn_mask_loss_graph(*x), name="mrcnn_mask_loss")(
                 [target_mask, target_class_ids, mrcnn_mask])
             detections = DetectionLayer(config)([rpn_rois, mrcnn_class, mrcnn_bbox, input_image_meta])
-            get_window_w_config = KL.Lambda(lambda x: get_window(x, config))
-            windows = tf.map_fn(get_window_w_config, input_image)
-            comp_loss = KL.Lambda(lambda x: comp_loss_graph(*x), name="comp_loss")([input_gt_boxes,input_image_meta,
-                                                                                    windows, detections])
+            # get_window_w_config = KL.Lambda(lambda x: get_window(x, config))
+            # windows = tf.map_fn(get_window_w_config, input_image)
+            comp_loss = KL.Lambda(lambda x: comp_loss_graph(*x), name="comp_loss")([input_gt_boxes, input_image_meta,
+                                                                                    detections])
 
             # Model
             inputs = [input_image, input_image_meta,
