@@ -1319,7 +1319,7 @@ def comp_loss_graph(input_gt_boxes, input_image_meta, detections):
     """
 
     i = tf.constant(0)
-    cond = lambda i, detections, meta_dict, results: tf.less(i, input_image_meta[0])
+    cond = lambda i, detections, meta_dict, results: tf.less(i, tf.shape(input_image_meta)[0])
     body = while_helper_get_preds
     output = tf.while_loop(cond, body, (i, detections, meta_dict, results))
 
