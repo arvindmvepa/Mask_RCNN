@@ -25,11 +25,140 @@ import keras.engine as KE
 import keras.models as KM
 
 from mrcnn import utils
+from rsna_kaggle_comp.metrics import tf_competition_metric
 
 # Requires TensorFlow 1.3+ and Keras 2.0.8+.
 from distutils.version import LooseVersion
 assert LooseVersion(tf.__version__) >= LooseVersion("1.3")
 assert LooseVersion(keras.__version__) >= LooseVersion('2.0.8')
+
+
+####### NEW ################################################
+
+def unmold_detections(detections, mrcnn_mask, original_image_shape,
+                      image_shape, window):
+    """Reformats the detections of one image from the format of the neural
+    network output to a format suitable for use in the rest of the
+    application.
+
+    detections: [N, (y1, x1, y2, x2, class_id, score)] in normalized coordinates
+    mrcnn_mask: [N, height, width, num_classes]
+    original_image_shape: [H, W, C] Original image shape before resizing
+    image_shape: [H, W, C] Shape of the image after resizing and padding
+    window: [y1, x1, y2, x2] Pixel coordinates of box in the image where the real
+            image is excluding the padding.
+
+    Returns:
+    boxes: [N, (y1, x1, y2, x2)] Bounding boxes in pixels
+    class_ids: [N] Integer class IDs for each bounding box
+    scores: [N] Float probability scores of the class_id
+    masks: [height, width, num_instances] Instance masks
+    """
+    # How many detections do we have?
+    # Detections array is padded with zeros. Find the first class_id == 0.
+    zero_ix = np.where(detections[:, 4] == 0)[0]
+    N = zero_ix[0] if zero_ix.shape[0] > 0 else detections.shape[0]
+
+    # Extract boxes, class_ids, scores, and class-specific masks
+    boxes = detections[:N, :4]
+    class_ids = detections[:N, 4].astype(np.int32)
+    scores = detections[:N, 5]
+    masks = mrcnn_mask[np.arange(N), :, :, class_ids]
+
+    # Translate normalized coordinates in the resized image to pixel
+    # coordinates in the original image before resizing
+    window = utils.norm_boxes(window, image_shape[:2])
+    wy1, wx1, wy2, wx2 = window
+    shift = np.array([wy1, wx1, wy1, wx1])
+    wh = wy2 - wy1  # window height
+    ww = wx2 - wx1  # window width
+    scale = np.array([wh, ww, wh, ww])
+    # Convert boxes to normalized coordinates on the window
+    boxes = np.divide(boxes - shift, scale)
+    # Convert boxes to pixel coordinates on the original image
+    boxes = utils.denorm_boxes(boxes, original_image_shape[:2])
+
+    # Filter out detections with zero area. Happens in early training when
+    # network weights are still random
+    exclude_ix = np.where(
+        (boxes[:, 2] - boxes[:, 0]) * (boxes[:, 3] - boxes[:, 1]) <= 0)[0]
+    if exclude_ix.shape[0] > 0:
+        boxes = np.delete(boxes, exclude_ix, axis=0)
+        class_ids = np.delete(class_ids, exclude_ix, axis=0)
+        scores = np.delete(scores, exclude_ix, axis=0)
+        masks = np.delete(masks, exclude_ix, axis=0)
+        N = class_ids.shape[0]
+
+    # Resize masks to original image size and set boundary threshold.
+    full_masks = []
+    for i in range(N):
+        # Convert neural network mask to full size mask
+        full_mask = utils.unmold_mask(masks[i], boxes[i], original_image_shape)
+        full_masks.append(full_mask)
+    full_masks = np.stack(full_masks, axis=-1) \
+        if full_masks else np.empty(original_image_shape[:2] + (0,))
+
+    return boxes, class_ids, scores, full_masks
+
+def mold_inputs(images, config):
+    """Takes a list of images and modifies them to the format expected
+    as an input to the neural network.
+    images: List of image matrices [height,width,depth]. Images can have
+        different sizes.
+
+    Returns 3 Numpy matrices:
+    molded_images: [N, h, w, 3]. Images resized and normalized.
+    image_metas: [N, length of meta data]. Details about each image.
+    windows: [N, (y1, x1, y2, x2)]. The portion of the image that has the
+        original image (padding excluded).
+    """
+    molded_images = []
+    image_metas = []
+    windows = []
+    for image in images:
+        # Resize image
+        # TODO: move resizing to mold_image()
+        molded_image, window, scale, padding, crop = utils.resize_image(
+            image,
+            min_dim=config.IMAGE_MIN_DIM,
+            min_scale=config.IMAGE_MIN_SCALE,
+            max_dim=config.IMAGE_MAX_DIM,
+            mode=config.IMAGE_RESIZE_MODE)
+        molded_image = mold_image(molded_image, config)
+        # Build image_meta
+        image_meta = compose_image_meta(
+            0, image.shape, molded_image.shape, window, scale,
+            np.zeros([config.NUM_CLASSES], dtype=np.int32))
+        # Append
+        molded_images.append(molded_image)
+        windows.append(window)
+        image_metas.append(image_meta)
+    # Pack into arrays
+    molded_images = np.stack(molded_images)
+    image_metas = np.stack(image_metas)
+    windows = np.stack(windows)
+    return molded_images, image_metas, windows
+
+def convert_to_kaggle_format(results, config):
+    images_bboxs = []
+    for r in results:
+        image_bboxs = []
+        assert (len(r['rois']) == len(r['scores']))
+        if len(r['rois']) != 0:
+            num_instances = len(r['rois'])
+            for i in range(num_instances):
+                if r['scores'][i] > config.DETECTION_MIN_CONFIDENCE:
+                    # x1, y1, width, height
+                    x1 = r['rois'][i][1]
+                    y1 = r['rois'][i][0]
+                    width = r['rois'][i][3] - x1
+                    height = r['rois'][i][2] - y1
+                    bbox = [x1, y1, width, height]
+                    image_bboxs.append(bbox)
+        images_bboxs.append(image_bboxs)
+    return images_bboxs
+
+
 
 
 ############################################################
@@ -1146,6 +1275,25 @@ def mrcnn_bbox_loss_graph(target_bbox, target_class_ids, pred_bbox):
     loss = K.mean(loss)
     return loss
 
+def comp_loss_graph(input_image, input_gt_boxes, input_image_meta, mrcnn_class, mrcnn_bbox, rpn_rois, config):
+    """
+    Loss for Mask R-CNN bounding box refinement.
+
+    """
+    _, _, windows = mold_inputs(input_image)
+
+    detections = DetectionLayer(config)([rpn_rois, mrcnn_class, mrcnn_bbox, input_image_meta])
+
+    results = []
+    for i, image_meta in enumerate(input_image_meta):
+        final_rois, _, final_scores, _ = \
+            unmold_detections(detections[i], image_meta["original_image_shape"], image_meta["image_shape"], windows[i])
+        results.append({
+            "rois": final_rois,
+            "scores": final_scores
+        })
+    pred_bboxes = convert_to_kaggle_format(results)
+    return tf_competition_metric(input_gt_boxes,pred_bboxes)
 
 def mrcnn_mask_loss_graph(target_masks, target_class_ids, pred_masks):
     """Mask binary cross-entropy loss for the masks head.
@@ -2025,6 +2173,9 @@ class MaskRCNN():
                 [target_bbox, target_class_ids, mrcnn_bbox])
             mask_loss = KL.Lambda(lambda x: mrcnn_mask_loss_graph(*x), name="mrcnn_mask_loss")(
                 [target_mask, target_class_ids, mrcnn_mask])
+            comp_loss = KL.Lambda(lambda x: comp_loss_graph(*x), name="comp_loss")([input_image, input_gt_boxes,
+                                                                                    input_image_meta, mrcnn_class,
+                                                                                    mrcnn_bbox, rpn_rois, config])
 
             # Model
             inputs = [input_image, input_image_meta,
@@ -2034,7 +2185,7 @@ class MaskRCNN():
             outputs = [rpn_class_logits, rpn_class, rpn_bbox,
                        mrcnn_class_logits, mrcnn_class, mrcnn_bbox, mrcnn_mask,
                        rpn_rois, output_rois,
-                       rpn_class_loss, rpn_bbox_loss, class_loss, bbox_loss, mask_loss]
+                       rpn_class_loss, rpn_bbox_loss, class_loss, bbox_loss, mask_loss, comp_loss]
             model = KM.Model(inputs, outputs, name='mask_rcnn')
         else:
             # Network Heads
@@ -2170,9 +2321,8 @@ class MaskRCNN():
         # First, clear previously set losses to avoid duplication
         self.keras_model._losses = []
         self.keras_model._per_input_losses = {}
-        loss_names = [
-            "rpn_class_loss",  "rpn_bbox_loss",
-            "mrcnn_class_loss", "mrcnn_bbox_loss", "mrcnn_mask_loss"]
+        loss_names = ["rpn_class_loss", "rpn_bbox_loss", "mrcnn_class_loss", "mrcnn_bbox_loss", "mrcnn_mask_loss",
+                      "comp_loss"]
         for name in loss_names:
             layer = self.keras_model.get_layer(name)
             if layer.output in self.keras_model.losses:
@@ -2422,7 +2572,7 @@ class MaskRCNN():
         windows = np.stack(windows)
         return molded_images, image_metas, windows
 
-    def unmold_detections(self, detections, mrcnn_mask, original_image_shape,
+    def unmold_detections(self, detections, original_image_shape,
                           image_shape, window):
         """Reformats the detections of one image from the format of the neural
         network output to a format suitable for use in the rest of the
@@ -2450,7 +2600,6 @@ class MaskRCNN():
         boxes = detections[:N, :4]
         class_ids = detections[:N, 4].astype(np.int32)
         scores = detections[:N, 5]
-        masks = mrcnn_mask[np.arange(N), :, :, class_ids]
 
         # Translate normalized coordinates in the resized image to pixel
         # coordinates in the original image before resizing
@@ -2473,19 +2622,9 @@ class MaskRCNN():
             boxes = np.delete(boxes, exclude_ix, axis=0)
             class_ids = np.delete(class_ids, exclude_ix, axis=0)
             scores = np.delete(scores, exclude_ix, axis=0)
-            masks = np.delete(masks, exclude_ix, axis=0)
             N = class_ids.shape[0]
 
-        # Resize masks to original image size and set boundary threshold.
-        full_masks = []
-        for i in range(N):
-            # Convert neural network mask to full size mask
-            full_mask = utils.unmold_mask(masks[i], boxes[i], original_image_shape)
-            full_masks.append(full_mask)
-        full_masks = np.stack(full_masks, axis=-1)\
-            if full_masks else np.empty(original_image_shape[:2] + (0,))
-
-        return boxes, class_ids, scores, full_masks
+        return boxes, class_ids, scores
 
     def detect(self, images, verbose=0):
         """Runs the detection pipeline.
