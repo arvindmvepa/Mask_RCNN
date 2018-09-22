@@ -1288,14 +1288,15 @@ def mrcnn_bbox_loss_graph(target_bbox, target_class_ids, pred_bbox):
     loss = K.mean(loss)
     return loss
 
-def get_final_detections(detection, meta_dict, i):
-    final_rois, _, final_scores, _ = unmold_detections(detection, meta_dict["original_image_shape"][i],
+def while_helper_get_preds(i, detections, meta_dict, results):
+    final_rois, _, final_scores, _ = unmold_detections(detections[i], meta_dict["original_image_shape"][i],
                                                        meta_dict["image_shape"][i], meta_dict["window"][i])
-    return {
+    results.append({
         "rois": final_rois,
         "scores": final_scores
-    }
-    lambda i, detections, meta_dict: tf.add(i, 1)
+    })
+
+    return tf.add(i, 1), detections, meta_dict, results
 
 def comp_loss_graph(input_gt_boxes, input_image_meta, detections):
     """
@@ -1317,11 +1318,11 @@ def comp_loss_graph(input_gt_boxes, input_image_meta, detections):
     ijk_final = tf.while_loop(c, b, ijk_0)
     """
 
-    """
     i = tf.constant(0)
-    cond = lambda i, detections, meta_dict: tf.less(i, input_image_meta[0])
-    body = get_final_detections
-    r = tf.while_loop(cond, body, (i, detections, meta_dict))
+    cond = lambda i, detections, meta_dict, results: tf.less(i, input_image_meta[0])
+    body = while_helper_get_preds
+    output = tf.while_loop(cond, body, (i, detections, meta_dict, results))
+
     """
     for i in range(tf.shape(input_image_meta).eval()[0]):
         final_rois, _, final_scores, _ = unmold_detections(detections[i], meta_dict["original_image_shape"][i],
@@ -1331,7 +1332,8 @@ def comp_loss_graph(input_gt_boxes, input_image_meta, detections):
             "rois": final_rois,
             "scores": final_scores
         })
-    pred_bboxes = convert_to_kaggle_format(results)
+    """
+    pred_bboxes = convert_to_kaggle_format(output[3])
     return tf_competition_metric(input_gt_boxes,pred_bboxes)
 
 def mrcnn_mask_loss_graph(target_masks, target_class_ids, pred_masks):
