@@ -872,8 +872,8 @@ def tf_norm_boxes(boxes, shape):
     """
     h = shape[0]
     w = shape[1]
-    scale = np.array([h - 1, w - 1, h - 1, w - 1])
-    shift = np.array([0, 0, 1, 1])
+    scale = tf.constant([h-1, w-1, h-1, w-1])
+    shift = tf.constant([0, 0, 1, 1])
     boxes - shift
     tf.divide((boxes - shift), scale)
     tf.cast(tf.divide((boxes - shift), scale), tf.float32)
