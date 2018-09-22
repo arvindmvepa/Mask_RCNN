@@ -73,9 +73,9 @@ def tf_unmold_detections(detections, original_image_shape, image_shape, window):
     ww = wx2 - wx1  # window width
     scale = np.array([wh, ww, wh, ww])
     # Convert boxes to normalized coordinates on the window
-    boxes = np.divide(boxes - shift, scale)
+    boxes = tf.divide(boxes - shift, scale)
     # Convert boxes to pixel coordinates on the original image
-    boxes = utils.denorm_boxes(boxes, original_image_shape[:2])
+    boxes = utils.tf_denorm_boxes(boxes, original_image_shape[:2])
 
     # Filter out detections with zero area. Happens in early training when
     # network weights are still random

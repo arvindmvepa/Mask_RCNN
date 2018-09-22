@@ -875,9 +875,9 @@ def tf_norm_boxes(boxes, shape):
     scale = np.array([h - 1, w - 1, h - 1, w - 1])
     shift = np.array([0, 0, 1, 1])
     boxes - shift
-    np.divide((boxes - shift), scale)
-    np.divide((boxes - shift), scale).astype(np.float32)
-    return np.divide((boxes - shift), scale).astype(np.float32)
+    tf.divide((boxes - shift), scale)
+    tf.cast(tf.divide((boxes - shift), scale), tf.float32)
+    return tf.cast(tf.divide((boxes - shift), scale), tf.float32)
 
 def norm_boxes(boxes, shape):
     """Converts boxes from pixel coordinates to normalized coordinates.
@@ -911,3 +911,20 @@ def denorm_boxes(boxes, shape):
     scale = np.array([h - 1, w - 1, h - 1, w - 1])
     shift = np.array([0, 0, 1, 1])
     return np.around(np.multiply(boxes, scale) + shift).astype(np.int32)
+
+def tf_denorm_boxes(boxes, shape):
+    """Converts boxes from normalized coordinates to pixel coordinates.
+    boxes: [N, (y1, x1, y2, x2)] in normalized coordinates
+    shape: [..., (height, width)] in pixels
+
+    Note: In pixel coordinates (y2, x2) is outside the box. But in normalized
+    coordinates it's inside the box.
+
+    Returns:
+        [N, (y1, x1, y2, x2)] in pixel coordinates
+    """
+    h = shape[0]
+    w = shape[1]
+    scale = np.array([h - 1, w - 1, h - 1, w - 1])
+    shift = np.array([0, 0, 1, 1])
+    return tf.cast(tf.round(tf.multiply(boxes, scale) + shift), tf.int32)
