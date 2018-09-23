@@ -1299,8 +1299,9 @@ def comp_loss_graph(input_gt_boxes, input_image_meta, detections, config):
     print("3rd time")
     print(tf.shape(results[0]))
     print(tf.shape(results[1]))
-    print(tf.shape(results[0][:]))
-    print(tf.shape(results[2]))
+    print(tf.shape(results[0][0]))
+    print(tf.shape(results[0][1]))
+    print(tf.shape(results[1][0]))
     """
     ValueError: Shapes
     must
