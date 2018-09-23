@@ -1286,7 +1286,7 @@ def while_helper_get_preds(i, detections, meta_dict, results):
         "scores": final_scores
     })
 
-    return tf.add(i, 1), detections, meta_dict, results
+    return (tf.add(i, 1), detections, meta_dict, results)
 
 def comp_loss_graph(input_gt_boxes, input_image_meta, detections):
     """
@@ -1310,7 +1310,7 @@ def comp_loss_graph(input_gt_boxes, input_image_meta, detections):
 
     i = tf.constant(0)
     cond = lambda i, detections, meta_dict, results: tf.less(i, tf.shape(input_image_meta)[0])
-    body = while_helper_get_preds
+    body = lambda i, detections, meta_dict, results: while_helper_get_preds(i, detections, meta_dict, results)
     output = tf.while_loop(cond, body, (i, detections, meta_dict, results))
 
     """
@@ -2207,7 +2207,7 @@ class MaskRCNN():
             detections = DetectionLayer(config)([rpn_rois, mrcnn_class, mrcnn_bbox, input_image_meta])
             # get_window_w_config = KL.Lambda(lambda x: get_window(x, config))
             # windows = tf.map_fn(get_window_w_config, input_image)
-            comp_loss = KL.Lambda(lambda x: comp_loss_graph(*x), name="comp_loss")([input_gt_boxes, input_image_meta,
+            comp_loss = KL.Lambda(lambda x: comp_loss_graph(*x), name="mrcnn_comp_loss")([input_gt_boxes, input_image_meta,
                                                                                     detections])
 
             # Model
