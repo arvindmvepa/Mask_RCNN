@@ -129,8 +129,6 @@ def mold_inputs(images, config):
 
 
 def get_window(image, config):
-    """
-    """
     _, window, _, _, _ = utils.resize_image(
         image,
         min_dim=config.IMAGE_MIN_DIM,
@@ -139,25 +137,23 @@ def get_window(image, config):
         mode=config.IMAGE_RESIZE_MODE)
     return window
 
+def get_rois(roi):
+    x1 = roi[1]
+    y1 = roi[0]
+    width = roi[3] - x1
+    height = roi[2] - y1
+    bbox = [x1, y1, width, height]
+    return bbox
+
 
 def convert_to_kaggle_format(results, config):
     images_bboxs = []
     for r in results:
         rois = r[0]
         scores = r[1]
-        image_bboxs = []
-        assert (len(rois) == len(scores))
-        if len(rois) != 0:
-            num_instances = len(rois)
-            for i in range(num_instances):
-                if scores[i] > config.DETECTION_MIN_CONFIDENCE:
-                    # x1, y1, width, height
-                    x1 = rois[i][1]
-                    y1 = rois[i][0]
-                    width = rois[i][3] - x1
-                    height = rois[i][2] - y1
-                    bbox = [x1, y1, width, height]
-                    image_bboxs.append(bbox)
+        filter = tf.where(scores > config.DETECTION_MIN_CONFIDENCE)[1]
+        rois = tf.gather(rois,filter)
+        image_bboxs = tf.map_fn(get_rois,rois)
         images_bboxs.append(image_bboxs)
     return images_bboxs
 
