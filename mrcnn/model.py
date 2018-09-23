@@ -1290,7 +1290,9 @@ def comp_loss_graph(input_gt_boxes, input_image_meta, detections, config):
     results = tf.map_fn(get_final_predictions, (detections, meta_dict["original_image_shape"], meta_dict["image_shape"],
                                                 meta_dict["window"]), dtype=(tf.float32, tf.float32))
     print("overall output")
-    print(tf.shape(results))
+    for r in results:
+        print(tf.shape(r[0]))
+        print(tf.shape(r[1]))
     pred_bboxes = convert_to_kaggle_format(results, config)
     return tf_competition_metric(input_gt_boxes,pred_bboxes)
 
