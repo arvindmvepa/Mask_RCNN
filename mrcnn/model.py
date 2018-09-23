@@ -150,13 +150,15 @@ def convert_to_kaggle_format(results, config):
     for r in results:
         rois = r[0]
         scores = r[1]
+        print("kaggle output")
+        print(tf.shape(rois))
+        print(tf.shape(scores))
         filter = tf.where(scores > config.DETECTION_MIN_CONFIDENCE)[1]
         rois = tf.gather(rois,filter)
+        print(tf.shape(rois))
         image_bboxs = tf.map_fn(get_rois,rois,dtype=(tf.float32,tf.float32,tf.float32,tf.float32))
         images_bboxs.append(image_bboxs)
     return images_bboxs
-
-
 
 
 ############################################################
