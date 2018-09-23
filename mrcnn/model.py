@@ -53,8 +53,6 @@ def tf_unmold_detections(detections, original_image_shape, image_shape, window):
     """
     # How many detections do we have?
     # Detections array is padded with zeros. Find the first class_id == 0.
-    # print(tf.shape(detections))
-    # print(tf.shape(detections[:, 4]))
     zero_ix = np.where(detections[:, 4] == 0)[0]
     N = zero_ix[0] if zero_ix.shape[0] > 0 else detections.shape[0]
 
@@ -1278,16 +1276,6 @@ def mrcnn_bbox_loss_graph(target_bbox, target_class_ids, pred_bbox):
     loss = K.mean(loss)
     return loss
 
-def while_helper_get_preds(i, detections, meta_dict, results):
-    final_rois, _, final_scores = tf_unmold_detections(detections[i], meta_dict["original_image_shape"][i],
-                                                          meta_dict["image_shape"][i], meta_dict["window"][i])
-    results.append({
-        "rois": final_rois,
-        "scores": final_scores
-    })
-
-    return (tf.add(i, 1), detections, meta_dict, results)
-
 def comp_loss_graph(input_gt_boxes, input_image_meta, detections, config):
     """
     Loss for Mask R-CNN bounding box refinement.
@@ -1295,30 +1283,7 @@ def comp_loss_graph(input_gt_boxes, input_image_meta, detections, config):
     """
     meta_dict = parse_image_meta_graph(input_image_meta)
     results = []
-    """
-    import collections
-    Pair = collections.namedtuple('Pair', 'j, k')
 
-    ijk_0 = (tf.constant(0), Pair(tf.constant(1), tf.constant(2)))
-
-    cond = lambda i, p: tf.less(i, input_image_meta[0])
-
-    b = lambda i, p: (i + 1, Pair((p.j + p.k), (p.j - p.k)))
-
-    ijk_final = tf.while_loop(c, b, ijk_0)
-    """
-
-    """
-    i = tf.constant(0)
-    cond = lambda i, detections, meta_dict, results: tf.less(i, tf.shape(input_image_meta)[0])
-    body = lambda i, detections, meta_dict, results: while_helper_get_preds(i, detections, meta_dict, results)
-    output = tf.while_loop(cond, body, (i, detections, meta_dict, results))
-    """
-    #sess = tf.Session()
-    #i = tf.constant(0)
-    #cond = tf.less(i, tf.shape(input_image_meta).eval()[0])
-    #sess.run(tf.variables_initializer(cond))
-    #i = 0
     batch_dim = input_image_meta.get_shape().as_list()[0]
     if batch_dim is not None:
         for i in range(batch_dim):
@@ -1328,19 +1293,6 @@ def comp_loss_graph(input_gt_boxes, input_image_meta, detections, config):
                 "rois": final_rois,
                 "scores": final_scores
             })
-            #i = tf.add(i, 1)
-
-    """
-    for i in range(tf.shape(input_image_meta).eval()[0]):
-        final_rois, _, final_scores, _ = unmold_detections(detections[i], meta_dict["original_image_shape"][i],
-                                                           meta_dict["image_shape"][i], meta_dict["window"][i])
-
-        results.append({
-            "rois": final_rois,
-            "scores": final_scores
-        })
-    """
-    #pred_bboxes = convert_to_kaggle_format(output[3])
     pred_bboxes = convert_to_kaggle_format(results, config)
 
     return tf_competition_metric(input_gt_boxes,pred_bboxes)
