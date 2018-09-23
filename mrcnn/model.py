@@ -85,7 +85,8 @@ def tf_unmold_detections(detections, original_image_shape, image_shape, window, 
         class_ids = np.delete(class_ids, exclude_ix, axis=0)
         scores = np.delete(scores, exclude_ix, axis=0)
     """
-    return boxes
+    #return boxes
+    return tf.constant([[1.0,2.0,2.0,3.0]]*config.DETECTION_MAX_INSTANCES)
 
 def mold_inputs(images, config):
     """Takes a list of images and modifies them to the format expected
@@ -137,37 +138,37 @@ def get_window(image, config):
     return window
 
 def get_rois(roi):
-    print("get_rois")
-    print(roi)
+    #print("get_rois")
+    #print(roi)
     x1 = roi[1]
     y1 = roi[0]
     width = roi[3] - x1
     height = roi[2] - y1
-    print(x1)
-    print(y1)
-    print(width)
-    print(height)
+    #print(x1)
+    #print(y1)
+    #print(width)
+    #print(height)
     return tf.stack([x1, y1, width, height])
 
 
 def convert_to_kaggle_format(results):
-    print('convert_to_kaggle_format')
-    print(results)
+    #print('convert_to_kaggle_format')
+    #print(results)
     images_bboxs = tf.map_fn(convert_im_to_kaggle_format, results, dtype=tf.float32)
-    print('convert_to_kaggle_format end')
-    print(images_bboxs)
+    #print('convert_to_kaggle_format end')
+    #print(images_bboxs)
     return images_bboxs
 
 def convert_im_to_kaggle_format(args):
     rois = args
-    print('convert_im_to_kaggle_format')
-    print(rois)
+    #print('convert_im_to_kaggle_format')
+    #print(rois)
     # unnecessary
     # rois = tf.boolean_mask(rois, scores > config.DETECTION_MIN_CONFIDENCE)
     # print(rois)
     image_bboxs = tf.map_fn(get_rois,rois,dtype=tf.float32)
-    print("convert_im_to_kaggle_format end")
-    print(image_bboxs)
+    #print("convert_im_to_kaggle_format end")
+    #print(image_bboxs)
     return image_bboxs
 
 
@@ -1288,9 +1289,14 @@ def mrcnn_bbox_loss_graph(target_bbox, target_class_ids, pred_bbox):
 def get_final_predictions(args, config):
     detection, original_image_shape, image_shape, window = args
     # issue in one of the arguments here?
-    # final_rois = tf_unmold_detections(detection, original_image_shape, image_shape, window, config)
-    # return final_rois
-    return tf.constant([[1.0,2.0,2.0,3.0]]*config.DETECTION_MAX_INSTANCES)
+    print("get final predictions")
+    print("detections {}".format(detection))
+    print("original image shape {}".format(original_image_shape))
+    print("image shape {}".format(image_shape))
+    print("window {}".format(window))
+    final_rois = tf_unmold_detections(detection, original_image_shape, image_shape, window, config)
+    return final_rois
+    #return tf.constant([[1.0,2.0,2.0,3.0]]*config.DETECTION_MAX_INSTANCES)
 
 def comp_loss_graph(input_gt_boxes, input_image_meta, detections, config):
     """
@@ -1301,9 +1307,9 @@ def comp_loss_graph(input_gt_boxes, input_image_meta, detections, config):
     results = tf.map_fn(lambda x: get_final_predictions(x, config), (detections, meta_dict["original_image_shape"],
                                                                      meta_dict["image_shape"], meta_dict["window"]),
                         dtype=tf.float32)
-    print(results[0])
-    print(results[1])
-    print(results)
+    #print(results[0])
+    #print(results[1])
+    #print(results)
     """
     print("overall output")
     for r in results:
