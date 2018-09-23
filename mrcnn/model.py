@@ -1293,6 +1293,11 @@ def comp_loss_graph(input_gt_boxes, input_image_meta, detections, config):
     for r in results:
         print(tf.shape(r[0]))
         print(tf.shape(r[1]))
+    print("2nd time")
+    for r in results:
+        print(tf.shape(r))
+    print("3rd time")
+    print(tf.shape(results))
     pred_bboxes = convert_to_kaggle_format(results, config)
     return tf_competition_metric(input_gt_boxes,pred_bboxes)
 
