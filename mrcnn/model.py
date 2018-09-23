@@ -1287,9 +1287,10 @@ def mrcnn_bbox_loss_graph(target_bbox, target_class_ids, pred_bbox):
 
 def get_final_predictions(args, config):
     detection, original_image_shape, image_shape, window = args
-    final_rois = tf_unmold_detections(detection, original_image_shape, image_shape, window, config)
-    return final_rois
-    #return tf.constant([[1.0,2.0,2.0,3.0]]*config.DETECTION_MAX_INSTANCES)
+    # issue in one of the arguments here?
+    # final_rois = tf_unmold_detections(detection, original_image_shape, image_shape, window, config)
+    # return final_rois
+    return tf.constant([[1.0,2.0,2.0,3.0]]*config.DETECTION_MAX_INSTANCES)
 
 def comp_loss_graph(input_gt_boxes, input_image_meta, detections, config):
     """
