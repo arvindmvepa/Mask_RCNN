@@ -1280,8 +1280,9 @@ def mrcnn_bbox_loss_graph(target_bbox, target_class_ids, pred_bbox):
 
 def get_final_predictions(args):
     detection, original_image_shape, image_shape, window = args
-    final_rois, _, final_scores = tf_unmold_detections(detection, original_image_shape, image_shape, window)
-    return final_rois,final_scores
+    #final_rois, _, final_scores = tf_unmold_detections(detection, original_image_shape, image_shape, window)
+    #return final_rois,final_scores
+    return tf.constant([]),tf.constant(.95)
 
 def comp_loss_graph(input_gt_boxes, input_image_meta, detections, config):
     """
