@@ -164,8 +164,9 @@ def convert_im_to_kaggle_format(args, config):
     print('convert_im_to_kaggle_format')
     print(rois)
     print(scores)
-    rois = tf.boolean_mask(rois, scores > config.DETECTION_MIN_CONFIDENCE)
-    print(rois)
+    # unnecessary
+    # rois = tf.boolean_mask(rois, scores > config.DETECTION_MIN_CONFIDENCE)
+    # print(rois)
     image_bboxs = tf.map_fn(get_rois,rois,dtype=tf.float32)
     print("convert_im_to_kaggle_format end")
     print(image_bboxs)
@@ -1287,10 +1288,11 @@ def mrcnn_bbox_loss_graph(target_bbox, target_class_ids, pred_bbox):
     return loss
 
 def get_final_predictions(args):
-    detection, original_image_shape, image_shape, window = args
+    detection, original_image_shape, image_shape, window, config = args
     #final_rois, _, final_scores = tf_unmold_detections(detection, original_image_shape, image_shape, window)
     #return final_rois,final_scores
-    return tf.constant([[1.0,2.0,2.0,3.0],[1.0,2.0,2.0,3.0]]), tf.constant([.95, 1.0])
+    return tf.constant([[1.0,2.0,2.0,3.0]*config.DETECTION_MAX_INSTANCES]), \
+           tf.constant([.95]*config.DETECTION_MAX_INSTANCES)
 
 def comp_loss_graph(input_gt_boxes, input_image_meta, detections, config):
     """
@@ -1299,7 +1301,8 @@ def comp_loss_graph(input_gt_boxes, input_image_meta, detections, config):
     """
     meta_dict = parse_image_meta_graph(input_image_meta)
     results = tf.map_fn(get_final_predictions, (detections, meta_dict["original_image_shape"], meta_dict["image_shape"],
-                                                meta_dict["window"]), dtype=(tf.float32, tf.float32))
+                                                meta_dict["window"]), config,
+                        dtype=tuple([tf.float32]*config.DETECTION_MAX_INSTANCES))
     print(results[0])
     print(results[1])
     print(results)
