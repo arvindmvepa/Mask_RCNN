@@ -142,8 +142,7 @@ def get_rois(roi):
     y1 = roi[0]
     width = roi[3] - x1
     height = roi[2] - y1
-    bbox = [x1, y1, width, height]
-    return bbox
+    return x1, y1, width, height
 
 
 def convert_to_kaggle_format(results, config):
@@ -153,7 +152,7 @@ def convert_to_kaggle_format(results, config):
         scores = r[1]
         filter = tf.where(scores > config.DETECTION_MIN_CONFIDENCE)[1]
         rois = tf.gather(rois,filter)
-        image_bboxs = tf.map_fn(get_rois,rois)
+        image_bboxs = tf.map_fn(get_rois,rois,dtype=(tf.float32,tf.float32,tf.float32,tf.float32))
         images_bboxs.append(image_bboxs)
     return images_bboxs
 
