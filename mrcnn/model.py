@@ -53,13 +53,11 @@ def tf_unmold_detections(detections, original_image_shape, image_shape, window):
     """
     # How many detections do we have?
     # Detections array is padded with zeros. Find the first class_id == 0.
-    zero_ix = np.where(detections[:, 4] == 0)[0]
-    N = zero_ix[0] if zero_ix.shape[0] > 0 else detections.shape[0]
+    #zero_ix = tf.where(detections[:, 4] == 0)[0]
+    #N = zero_ix[0] if tf.shape(zero_ix)[0] > 0 else tf.shape(detections)[0]
 
     # Extract boxes, class_ids, scores, and class-specific masks
-    boxes = detections[:N, :4]
-    class_ids = tf.cast(detections[:N, 4], tf.int32)
-    scores = detections[:N, 5]
+    boxes = detections[:, :4]
 
     # Translate normalized coordinates in the resized image to pixel
     # coordinates in the original image before resizing
@@ -80,13 +78,14 @@ def tf_unmold_detections(detections, original_image_shape, image_shape, window):
     # Filter out detections with zero area. Happens in early training when
     # network weights are still random
     # print(tf.shape(boxes))
+    """
     exclude_ix = tf.where((boxes[:,2]-boxes[:,0])*(boxes[:,3]-boxes[:,1]) <= 0)[0]
     if exclude_ix.shape[0] > 0:
         boxes = np.delete(boxes, exclude_ix, axis=0)
         class_ids = np.delete(class_ids, exclude_ix, axis=0)
         scores = np.delete(scores, exclude_ix, axis=0)
-
-    return boxes, class_ids, scores
+    """
+    return boxes
 
 def mold_inputs(images, config):
     """Takes a list of images and modifies them to the format expected
@@ -1286,11 +1285,11 @@ def mrcnn_bbox_loss_graph(target_bbox, target_class_ids, pred_bbox):
     loss = K.mean(loss)
     return loss
 
-def get_final_predictions(args, config):
+def get_final_predictions(args):
     detection, original_image_shape, image_shape, window = args
-    #final_rois, _, final_scores = tf_unmold_detections(detection, original_image_shape, image_shape, window)
-    #return final_rois,final_scores
-    return tf.constant([[1.0,2.0,2.0,3.0]]*config.DETECTION_MAX_INSTANCES)
+    final_rois = tf_unmold_detections(detection, original_image_shape, image_shape, window)
+    return final_rois
+    #return tf.constant([[1.0,2.0,2.0,3.0]]*config.DETECTION_MAX_INSTANCES)
 
 def comp_loss_graph(input_gt_boxes, input_image_meta, detections, config):
     """
@@ -1298,9 +1297,8 @@ def comp_loss_graph(input_gt_boxes, input_image_meta, detections, config):
 
     """
     meta_dict = parse_image_meta_graph(input_image_meta)
-    results = tf.map_fn(lambda x: get_final_predictions(x, config), (detections, meta_dict["original_image_shape"],
-                                                                     meta_dict["image_shape"], meta_dict["window"]),
-                        dtype=tf.float32)
+    results = tf.map_fn(get_final_predictions, (detections, meta_dict["original_image_shape"],meta_dict["image_shape"],
+                                                meta_dict["window"]), dtype=tf.float32)
     print(results[0])
     print(results[1])
     print(results)
