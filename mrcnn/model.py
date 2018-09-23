@@ -1314,16 +1314,20 @@ def comp_loss_graph(input_gt_boxes, input_image_meta, detections):
     body = lambda i, detections, meta_dict, results: while_helper_get_preds(i, detections, meta_dict, results)
     output = tf.while_loop(cond, body, (i, detections, meta_dict, results))
     """
-    sess = tf.Session()
-    i = tf.constant(0)
-    while sess.run(tf.less(i, tf.shape(input_image_meta).eval()[0])):
+    #sess = tf.Session()
+    #i = tf.constant(0)
+    #cond = tf.less(i, tf.shape(input_image_meta).eval()[0])
+    #sess.run(tf.variables_initializer(cond))
+    #i = 0
+    batch_dim = input_image_meta.get_shape().as_list()[0]
+    for i in range(batch_dim):
         final_rois, _, final_scores = tf_unmold_detections(detections[i], meta_dict["original_image_shape"][i],
                                                            meta_dict["image_shape"][i], meta_dict["window"][i])
         results.append({
             "rois": final_rois,
             "scores": final_scores
         })
-        i = tf.add(i, 1)
+        #i = tf.add(i, 1)
 
     """
     for i in range(tf.shape(input_image_meta).eval()[0]):
