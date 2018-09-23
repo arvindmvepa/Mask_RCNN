@@ -138,27 +138,40 @@ def get_window(image, config):
     return window
 
 def get_rois(roi):
+    print("get_rois")
+    print(roi)
     x1 = roi[1]
     y1 = roi[0]
     width = roi[3] - x1
     height = roi[2] - y1
+    print(x1)
+    print(y1)
+    print(width)
+    print(height)
     return x1, y1, width, height
 
 
 def convert_to_kaggle_format(results, config):
-    images_bboxs = []
-    for r in results:
-        rois = r[0]
-        scores = r[1]
-        print("kaggle output")
-        print(tf.shape(rois))
-        print(tf.shape(scores))
-        filter = tf.where(scores > config.DETECTION_MIN_CONFIDENCE)[1]
-        rois = tf.gather(rois,filter)
-        print(tf.shape(rois))
-        image_bboxs = tf.map_fn(get_rois,rois,dtype=(tf.float32,tf.float32,tf.float32,tf.float32))
-        images_bboxs.append(image_bboxs)
+    print('convert_to_kaggle_format')
+    print(results)
+    images_bboxs = tf.map_fn(lambda x: convert_im_to_kaggle_format(x, config), results, dtype=tf.float32)
+    print('convert_to_kaggle_format end')
+    print(images_bboxs)
     return images_bboxs
+
+def convert_im_to_kaggle_format(args, config):
+    rois, scores = args
+    print('convert_im_to_kaggle_format')
+    print(rois)
+    print(scores)
+    filter = tf.where(scores > config.DETECTION_MIN_CONFIDENCE)[1]
+    print(filter)
+    rois = tf.gather(rois,filter)
+    print(rois)
+    image_bboxs = tf.map_fn(get_rois,rois,dtype=tf.float32)
+    print("convert_im_to_kaggle_format end")
+    print(image_bboxs)
+    return image_bboxs
 
 
 ############################################################
@@ -1289,6 +1302,10 @@ def comp_loss_graph(input_gt_boxes, input_image_meta, detections, config):
     meta_dict = parse_image_meta_graph(input_image_meta)
     results = tf.map_fn(get_final_predictions, (detections, meta_dict["original_image_shape"], meta_dict["image_shape"],
                                                 meta_dict["window"]), dtype=(tf.float32, tf.float32))
+    print(results[0])
+    print(results[1])
+    print(results)
+    """
     print("overall output")
     for r in results:
         print(tf.shape(r[0]))
@@ -1308,6 +1325,7 @@ def comp_loss_graph(input_gt_boxes, input_image_meta, detections, config):
     # print(tf.shape(results[0][1]))
     # print(tf.shape(results[1][0]))
     """
+    """
     ValueError: Shapes
     must
     be
@@ -1321,8 +1339,8 @@ def comp_loss_graph(input_gt_boxes, input_image_meta, detections, config):
     0
     with other shapes.for 'comp_loss/Shape_6/packed' (op: 'Pack') with input shapes: [8, 2, 4], [8, 2].
     """
-    print("4th time")
-    print(tf.shape(results))
+    #print("4th time")
+    #print(tf.shape(results))
     pred_bboxes = convert_to_kaggle_format(results, config)
     return tf_competition_metric(input_gt_boxes,pred_bboxes)
 
