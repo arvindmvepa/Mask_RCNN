@@ -143,17 +143,19 @@ def get_window(image, config):
 def convert_to_kaggle_format(results, config):
     images_bboxs = []
     for r in results:
+        rois = r[0]
+        scores = r[1]
         image_bboxs = []
-        assert (len(r['rois']) == len(r['scores']))
-        if len(r['rois']) != 0:
-            num_instances = len(r['rois'])
+        assert (len(rois) == len(scores))
+        if len(rois) != 0:
+            num_instances = len(rois)
             for i in range(num_instances):
-                if r['scores'][i] > config.DETECTION_MIN_CONFIDENCE:
+                if scores[i] > config.DETECTION_MIN_CONFIDENCE:
                     # x1, y1, width, height
-                    x1 = r['rois'][i][1]
-                    y1 = r['rois'][i][0]
-                    width = r['rois'][i][3] - x1
-                    height = r['rois'][i][2] - y1
+                    x1 = rois[i][1]
+                    y1 = rois[i][0]
+                    width = rois[i][3] - x1
+                    height = rois[i][2] - y1
                     bbox = [x1, y1, width, height]
                     image_bboxs.append(bbox)
         images_bboxs.append(image_bboxs)
@@ -1276,25 +1278,19 @@ def mrcnn_bbox_loss_graph(target_bbox, target_class_ids, pred_bbox):
     loss = K.mean(loss)
     return loss
 
+def get_final_predictions(detection, original_image_shape, image_shape, window):
+    final_rois, _, final_scores = tf_unmold_detections(detection, original_image_shape, image_shape, window)
+    return final_rois,final_scores
+
 def comp_loss_graph(input_gt_boxes, input_image_meta, detections, config):
     """
     Loss for Mask R-CNN bounding box refinement.
 
     """
     meta_dict = parse_image_meta_graph(input_image_meta)
-    results = []
-
-    batch_dim = input_image_meta.get_shape().as_list()[0]
-    if batch_dim is not None:
-        for i in range(batch_dim):
-            final_rois, _, final_scores = tf_unmold_detections(detections[i], meta_dict["original_image_shape"][i],
-                                                               meta_dict["image_shape"][i], meta_dict["window"][i])
-            results.append({
-                "rois": final_rois,
-                "scores": final_scores
-            })
+    results = tf.map_fn(get_final_predictions, [detections, meta_dict["original_image_shape"], meta_dict["image_shape"],
+                                                meta_dict["window"]], dtype=(tf.float32, tf.float32))
     pred_bboxes = convert_to_kaggle_format(results, config)
-
     return tf_competition_metric(input_gt_boxes,pred_bboxes)
 
 def mrcnn_mask_loss_graph(target_masks, target_class_ids, pred_masks):
