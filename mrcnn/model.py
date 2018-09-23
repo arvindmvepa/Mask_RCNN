@@ -2226,9 +2226,8 @@ class MaskRCNN():
             detections = DetectionLayer(config)([rpn_rois, mrcnn_class, mrcnn_bbox, input_image_meta])
             # get_window_w_config = KL.Lambda(lambda x: get_window(x, config))
             # windows = tf.map_fn(get_window_w_config, input_image)
-            comp_loss = KL.Lambda(lambda x: comp_loss_graph(*x), name="mrcnn_comp_loss")([input_gt_boxes,
-                                                                                          input_image_meta,detections,
-                                                                                          config])
+            comp_loss = KL.Lambda(lambda x: comp_loss_graph(*x, config), name="mrcnn_comp_loss")([input_gt_boxes,
+                                                                                          input_image_meta,detections])
 
             # Model
             inputs = [input_image, input_image_meta,
