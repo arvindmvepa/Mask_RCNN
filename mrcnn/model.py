@@ -1288,7 +1288,7 @@ def while_helper_get_preds(i, detections, meta_dict, results):
 
     return (tf.add(i, 1), detections, meta_dict, results)
 
-def comp_loss_graph(input_gt_boxes, input_image_meta, detections):
+def comp_loss_graph(input_gt_boxes, input_image_meta, detections, config):
     """
     Loss for Mask R-CNN bounding box refinement.
 
@@ -1341,7 +1341,7 @@ def comp_loss_graph(input_gt_boxes, input_image_meta, detections):
         })
     """
     #pred_bboxes = convert_to_kaggle_format(output[3])
-    pred_bboxes = convert_to_kaggle_format(results)
+    pred_bboxes = convert_to_kaggle_format(results, config)
 
     return tf_competition_metric(input_gt_boxes,pred_bboxes)
 
@@ -2226,8 +2226,9 @@ class MaskRCNN():
             detections = DetectionLayer(config)([rpn_rois, mrcnn_class, mrcnn_bbox, input_image_meta])
             # get_window_w_config = KL.Lambda(lambda x: get_window(x, config))
             # windows = tf.map_fn(get_window_w_config, input_image)
-            comp_loss = KL.Lambda(lambda x: comp_loss_graph(*x), name="mrcnn_comp_loss")([input_gt_boxes, input_image_meta,
-                                                                                    detections])
+            comp_loss = KL.Lambda(lambda x: comp_loss_graph(*x), name="mrcnn_comp_loss")([input_gt_boxes,
+                                                                                          input_image_meta,detections,
+                                                                                          config])
 
             # Model
             inputs = [input_image, input_image_meta,
