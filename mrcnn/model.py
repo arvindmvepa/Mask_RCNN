@@ -68,12 +68,12 @@ def tf_unmold_detections(detections, original_image_shape, image_shape, window):
     wx1 = window[1]
     wy2 = window[2]
     wx2 = window[3]
-    shift = tf.constant([wy1, wx1, wy1, wx1])
+    shift = tf.stack([wy1, wx1, wy1, wx1])
     wh = wy2 - wy1  # window height
     ww = wx2 - wx1  # window width
-    scale = tf.constant([wh, ww, wh, ww])
+    scale = tf.stack([wh, ww, wh, ww])
     # Convert boxes to normalized coordinates on the window
-    boxes = tf.div(boxes - shift, scale)
+    boxes = tf.divide(boxes - shift, scale)
     # Convert boxes to pixel coordinates on the original image
     boxes = utils.tf_denorm_boxes(boxes, original_image_shape[:2])
 

@@ -872,8 +872,6 @@ def tf_norm_boxes(boxes, shape):
     """
     h = shape[0]
     w = shape[1]
-    print(h)
-    print(w)
     scale = tf.stack([h-1.0, w-1.0, h-1.0, w-1.0])
     shift = tf.constant([0.0, 0.0, 1.0, 1.0])
     boxes - shift
@@ -927,6 +925,6 @@ def tf_denorm_boxes(boxes, shape):
     """
     h = shape[0]
     w = shape[1]
-    scale = np.array([h - 1, w - 1, h - 1, w - 1])
-    shift = np.array([0, 0, 1, 1])
-    return tf.cast(tf.round(tf.multiply(boxes, scale) + shift), tf.int32)
+    scale = tf.stack([h-1.0, w-1.0, h-1.0, w-1.0])
+    shift = tf.constant([0.0, 0.0, 1.0, 1.0])
+    return tf.cast(tf.round(tf.multiply(boxes, scale) + shift), tf.float32)
