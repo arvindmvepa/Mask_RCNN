@@ -53,8 +53,8 @@ def tf_unmold_detections(detections, original_image_shape, image_shape, window):
     """
     # How many detections do we have?
     # Detections array is padded with zeros. Find the first class_id == 0.
-    print(tf.shape(detections))
-    print(tf.shape(detections[:, 4]))
+    # print(tf.shape(detections))
+    # print(tf.shape(detections[:, 4]))
     zero_ix = np.where(detections[:, 4] == 0)[0]
     N = zero_ix[0] if zero_ix.shape[0] > 0 else detections.shape[0]
 
@@ -81,7 +81,7 @@ def tf_unmold_detections(detections, original_image_shape, image_shape, window):
 
     # Filter out detections with zero area. Happens in early training when
     # network weights are still random
-    print(tf.shape(boxes))
+    # print(tf.shape(boxes))
     exclude_ix = tf.where((boxes[:,2]-boxes[:,0])*(boxes[:,3]-boxes[:,1]) <= 0)[0]
     if exclude_ix.shape[0] > 0:
         boxes = np.delete(boxes, exclude_ix, axis=0)
@@ -1279,7 +1279,7 @@ def mrcnn_bbox_loss_graph(target_bbox, target_class_ids, pred_bbox):
     return loss
 
 def while_helper_get_preds(i, detections, meta_dict, results):
-    final_rois, _, final_scores, _ = tf_unmold_detections(detections[i], meta_dict["original_image_shape"][i],
+    final_rois, _, final_scores = tf_unmold_detections(detections[i], meta_dict["original_image_shape"][i],
                                                           meta_dict["image_shape"][i], meta_dict["window"][i])
     results.append({
         "rois": final_rois,
