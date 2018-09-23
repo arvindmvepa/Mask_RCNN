@@ -1320,14 +1320,15 @@ def comp_loss_graph(input_gt_boxes, input_image_meta, detections):
     #sess.run(tf.variables_initializer(cond))
     #i = 0
     batch_dim = input_image_meta.get_shape().as_list()[0]
-    for i in range(batch_dim):
-        final_rois, _, final_scores = tf_unmold_detections(detections[i], meta_dict["original_image_shape"][i],
-                                                           meta_dict["image_shape"][i], meta_dict["window"][i])
-        results.append({
-            "rois": final_rois,
-            "scores": final_scores
-        })
-        #i = tf.add(i, 1)
+    if batch_dim is not None:
+        for i in range(batch_dim):
+            final_rois, _, final_scores = tf_unmold_detections(detections[i], meta_dict["original_image_shape"][i],
+                                                               meta_dict["image_shape"][i], meta_dict["window"][i])
+            results.append({
+                "rois": final_rois,
+                "scores": final_scores
+            })
+            #i = tf.add(i, 1)
 
     """
     for i in range(tf.shape(input_image_meta).eval()[0]):
@@ -1341,6 +1342,7 @@ def comp_loss_graph(input_gt_boxes, input_image_meta, detections):
     """
     #pred_bboxes = convert_to_kaggle_format(output[3])
     pred_bboxes = convert_to_kaggle_format(results)
+
     return tf_competition_metric(input_gt_boxes,pred_bboxes)
 
 def mrcnn_mask_loss_graph(target_masks, target_class_ids, pred_masks):
