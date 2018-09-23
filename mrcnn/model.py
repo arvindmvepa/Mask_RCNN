@@ -35,7 +35,7 @@ assert LooseVersion(keras.__version__) >= LooseVersion('2.0.8')
 
 ####### NEW ################################################
 
-def tf_unmold_detections(detections, original_image_shape, image_shape, window):
+def tf_unmold_detections(detections, original_image_shape, image_shape, window, config):
     """Reformats the detections of one image from the format of the neural
     network output to a format suitable for use in the rest of the
     application.
@@ -57,7 +57,7 @@ def tf_unmold_detections(detections, original_image_shape, image_shape, window):
     #N = zero_ix[0] if tf.shape(zero_ix)[0] > 0 else tf.shape(detections)[0]
 
     # Extract boxes, class_ids, scores, and class-specific masks
-    boxes = detections[:, :4]
+    boxes = detections[config.DETECTION_MAX_INSTANCES:, :4]
 
     # Translate normalized coordinates in the resized image to pixel
     # coordinates in the original image before resizing
@@ -1285,9 +1285,9 @@ def mrcnn_bbox_loss_graph(target_bbox, target_class_ids, pred_bbox):
     loss = K.mean(loss)
     return loss
 
-def get_final_predictions(args):
+def get_final_predictions(args, config):
     detection, original_image_shape, image_shape, window = args
-    final_rois = tf_unmold_detections(detection, original_image_shape, image_shape, window)
+    final_rois = tf_unmold_detections(detection, original_image_shape, image_shape, window, config)
     return final_rois
     #return tf.constant([[1.0,2.0,2.0,3.0]]*config.DETECTION_MAX_INSTANCES)
 
@@ -1297,8 +1297,9 @@ def comp_loss_graph(input_gt_boxes, input_image_meta, detections, config):
 
     """
     meta_dict = parse_image_meta_graph(input_image_meta)
-    results = tf.map_fn(get_final_predictions, (detections, meta_dict["original_image_shape"],meta_dict["image_shape"],
-                                                meta_dict["window"]), dtype=tf.float32)
+    results = tf.map_fn(lambda x: get_final_predictions(x, config), (detections, meta_dict["original_image_shape"],
+                                                                     meta_dict["image_shape"], meta_dict["window"]),
+                        dtype=tf.float32)
     print(results[0])
     print(results[1])
     print(results)
