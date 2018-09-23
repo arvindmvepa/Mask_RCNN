@@ -1301,7 +1301,7 @@ def comp_loss_graph(input_gt_boxes, input_image_meta, detections, config):
     """
     meta_dict = parse_image_meta_graph(input_image_meta)
     results = tf.map_fn(get_final_predictions, (detections, meta_dict["original_image_shape"], meta_dict["image_shape"],
-                                                meta_dict["window"]), config,
+                                                meta_dict["window"], config),
                         dtype=tuple([tf.float32]*config.DETECTION_MAX_INSTANCES))
     print(results[0])
     print(results[1])
