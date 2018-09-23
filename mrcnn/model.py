@@ -1279,7 +1279,7 @@ def get_final_predictions(args):
     detection, original_image_shape, image_shape, window = args
     #final_rois, _, final_scores = tf_unmold_detections(detection, original_image_shape, image_shape, window)
     #return final_rois,final_scores
-    return tf.constant([[1.0,2.0,2.0,3.0]]), tf.constant([.95])
+    return tf.constant([[1.0,2.0,2.0,3.0],[1.0,2.0,2.0,3.0]]), tf.constant([.95, 1.0])
 
 def comp_loss_graph(input_gt_boxes, input_image_meta, detections, config):
     """
