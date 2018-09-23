@@ -164,13 +164,11 @@ def convert_im_to_kaggle_format(args, config):
     print('convert_im_to_kaggle_format')
     print(rois)
     print(scores)
-    filter = tf.where(scores > config.DETECTION_MIN_CONFIDENCE)[1]
-    print(filter)
-    rois = tf.gather(rois,filter)
+    rois = tf.boolean_mask(rois, scores > config.DETECTION_MIN_CONFIDENCE)
     print(rois)
-    image_bboxs = tf.map_fn(get_rois,rois,dtype=tf.float32)
+    image_bboxs = tf.map_fn(get_rois,rois,dtype=(tf.float32,tf.float32,tf.float32,tf.float32))
     print("convert_im_to_kaggle_format end")
-    print(image_bboxs)
+    #print(image_bboxs)
     return image_bboxs
 
 
