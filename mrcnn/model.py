@@ -1287,8 +1287,8 @@ def mrcnn_bbox_loss_graph(target_bbox, target_class_ids, pred_bbox):
     loss = K.mean(loss)
     return loss
 
-def get_final_predictions(args):
-    detection, original_image_shape, image_shape, window, config = args
+def get_final_predictions(args, config):
+    detection, original_image_shape, image_shape, window = args
     #final_rois, _, final_scores = tf_unmold_detections(detection, original_image_shape, image_shape, window)
     #return final_rois,final_scores
     return tf.constant([[1.0,2.0,2.0,3.0]*config.DETECTION_MAX_INSTANCES]), \
@@ -1300,8 +1300,8 @@ def comp_loss_graph(input_gt_boxes, input_image_meta, detections, config):
 
     """
     meta_dict = parse_image_meta_graph(input_image_meta)
-    results = tf.map_fn(get_final_predictions, (detections, meta_dict["original_image_shape"], meta_dict["image_shape"],
-                                                meta_dict["window"], config),
+    results = tf.map_fn(lambda x: get_final_predictions(x, config), (detections, meta_dict["original_image_shape"],
+                                                                     meta_dict["image_shape"], meta_dict["window"]),
                         dtype=tuple([tf.float32]*config.DETECTION_MAX_INSTANCES))
     print(results[0])
     print(results[1])
