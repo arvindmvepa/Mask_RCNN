@@ -154,7 +154,8 @@ def get_rois(roi):
 def convert_to_kaggle_format(results, config):
     print('convert_to_kaggle_format')
     print(results)
-    images_bboxs = tf.map_fn(lambda x: convert_im_to_kaggle_format(x, config), results, dtype=tf.float32)
+    images_bboxs = tf.map_fn(lambda x: convert_im_to_kaggle_format(x, config), results, dtype=(tf.float32,tf.float32,
+                                                                                               tf.float32,tf.float32))
     print('convert_to_kaggle_format end')
     print(images_bboxs)
     return images_bboxs
@@ -168,7 +169,7 @@ def convert_im_to_kaggle_format(args, config):
     print(rois)
     image_bboxs = tf.map_fn(get_rois,rois,dtype=(tf.float32,tf.float32,tf.float32,tf.float32))
     print("convert_im_to_kaggle_format end")
-    #print(image_bboxs)
+    print(image_bboxs)
     return image_bboxs
 
 
