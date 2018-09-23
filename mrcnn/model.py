@@ -151,15 +151,15 @@ def get_rois(roi):
     return tf.stack([x1, y1, width, height])
 
 
-def convert_to_kaggle_format(results, config):
+def convert_to_kaggle_format(results):
     print('convert_to_kaggle_format')
     print(results)
-    images_bboxs = tf.map_fn(lambda x: convert_im_to_kaggle_format(x, config), results, dtype=tf.float32)
+    images_bboxs = tf.map_fn(convert_im_to_kaggle_format, results, dtype=tf.float32)
     print('convert_to_kaggle_format end')
     print(images_bboxs)
     return images_bboxs
 
-def convert_im_to_kaggle_format(args, config):
+def convert_im_to_kaggle_format(args):
     rois = args
     print('convert_im_to_kaggle_format')
     print(rois)
@@ -1290,7 +1290,7 @@ def get_final_predictions(args, config):
     detection, original_image_shape, image_shape, window = args
     #final_rois, _, final_scores = tf_unmold_detections(detection, original_image_shape, image_shape, window)
     #return final_rois,final_scores
-    return tf.constant([[1.0,2.0,2.0,3.0]*config.DETECTION_MAX_INSTANCES])
+    return tf.constant([[1.0,2.0,2.0,3.0]]*config.DETECTION_MAX_INSTANCES)
 
 def comp_loss_graph(input_gt_boxes, input_image_meta, detections, config):
     """
@@ -1340,7 +1340,7 @@ def comp_loss_graph(input_gt_boxes, input_image_meta, detections, config):
     """
     #print("4th time")
     #print(tf.shape(results))
-    pred_bboxes = convert_to_kaggle_format(results, config)
+    pred_bboxes = convert_to_kaggle_format(results)
     return tf_competition_metric(input_gt_boxes,pred_bboxes)
 
 def mrcnn_mask_loss_graph(target_masks, target_class_ids, pred_masks):
