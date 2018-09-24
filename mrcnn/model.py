@@ -2248,7 +2248,14 @@ class MaskRCNN():
                 [target_bbox, target_class_ids, mrcnn_bbox])
             mask_loss = KL.Lambda(lambda x: mrcnn_mask_loss_graph(*x), name="mrcnn_mask_loss")(
                 [target_mask, target_class_ids, mrcnn_mask])
-            detections = DetectionLayer(config)([rpn_rois, mrcnn_class, mrcnn_bbox, input_image_meta])
+
+            # comp loss
+            mrcnn_class_logits_, mrcnn_class_, mrcnn_bbox_ =\
+                fpn_classifier_graph(rpn_rois, mrcnn_feature_maps, input_image_meta,
+                                     config.POOL_SIZE, config.NUM_CLASSES,
+                                     train_bn=config.TRAIN_BN,
+                                     fc_layers_size=config.FPN_CLASSIF_FC_LAYERS_SIZE)
+            detections = DetectionLayer(config)([rpn_rois, mrcnn_class_, mrcnn_bbox_, input_image_meta])
             # get_window_w_config = KL.Lambda(lambda x: get_window(x, config))
             # windows = tf.map_fn(get_window_w_config, input_image)
             comp_loss = KL.Lambda(lambda x: comp_loss_graph(*x, config), name="comp_loss")([input_gt_boxes,
