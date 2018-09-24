@@ -1101,6 +1101,56 @@ def fpn_classifier_graph(rois, feature_maps, image_meta,
     return mrcnn_class_logits, mrcnn_probs, mrcnn_bbox
 
 
+def fpn_classifier_graph_(rois, feature_maps, image_meta,
+                         pool_size, num_classes, train_bn=True,
+                         fc_layers_size=1024):
+    """Builds the computation graph of the feature pyramid network classifier
+    and regressor heads.
+
+    rois: [batch, num_rois, (y1, x1, y2, x2)] Proposal boxes in normalized
+          coordinates.
+    feature_maps: List of feature maps from different layers of the pyramid,
+                  [P2, P3, P4, P5]. Each has a different resolution.
+    - image_meta: [batch, (meta data)] Image details. See compose_image_meta()
+    pool_size: The width of the square feature map generated from ROI Pooling.
+    num_classes: number of classes, which determines the depth of the results
+    train_bn: Boolean. Train or freeze Batch Norm layers
+    fc_layers_size: Size of the 2 FC layers
+
+    Returns:
+        logits: [N, NUM_CLASSES] classifier logits (before softmax)
+        probs: [N, NUM_CLASSES] classifier probabilities
+        bbox_deltas: [N, (dy, dx, log(dh), log(dw))] Deltas to apply to
+                     proposal boxes
+    """
+    # ROI Pooling
+    # Shape: [batch, num_boxes, pool_height, pool_width, channels]
+    x = PyramidROIAlign([pool_size, pool_size], name="roi_align_classifier_")([rois, image_meta] + feature_maps)
+    # Two 1024 FC layers (implemented with Conv2D for consistency)
+    x = KL.TimeDistributed(KL.Conv2D(fc_layers_size, (pool_size, pool_size), padding="valid"),
+                           name="mrcnn_class_conv1_")(x)
+    x = KL.TimeDistributed(BatchNorm(), name='mrcnn_class_bn1_')(x, training=train_bn)
+    x = KL.Activation('relu')(x)
+    x = KL.TimeDistributed(KL.Conv2D(fc_layers_size, (1, 1)), name="mrcnn_class_conv2_")(x)
+    x = KL.TimeDistributed(BatchNorm(), name='mrcnn_class_bn2_')(x, training=train_bn)
+    x = KL.Activation('relu')(x)
+
+    shared = KL.Lambda(lambda x: K.squeeze(K.squeeze(x, 3), 2), name="pool_squeeze_")(x)
+
+    # Classifier head
+    mrcnn_class_logits = KL.TimeDistributed(KL.Dense(num_classes), name='mrcnn_class_logits_')(shared)
+    mrcnn_probs = KL.TimeDistributed(KL.Activation("softmax"), name="mrcnn_class_")(mrcnn_class_logits)
+
+    # BBox head
+    # [batch, boxes, num_classes * (dy, dx, log(dh), log(dw))]
+    x = KL.TimeDistributed(KL.Dense(num_classes * 4, activation='linear'), name='mrcnn_bbox_fc_')(shared)
+    # Reshape to [batch, boxes, num_classes, (dy, dx, log(dh), log(dw))]
+    s = K.int_shape(x)
+    mrcnn_bbox = KL.Reshape((s[1], num_classes, 4), name="mrcnn_bbox_")(x)
+
+    return mrcnn_class_logits, mrcnn_probs, mrcnn_bbox
+
+
 def build_fpn_mask_graph(rois, feature_maps, image_meta,
                          pool_size, num_classes, train_bn=True):
     """Builds the computation graph of the mask head of Feature Pyramid Network.
@@ -2251,10 +2301,9 @@ class MaskRCNN():
 
             # comp loss
             mrcnn_class_logits_, mrcnn_class_, mrcnn_bbox_ =\
-                fpn_classifier_graph(rpn_rois, mrcnn_feature_maps, input_image_meta,
-                                     config.POOL_SIZE, config.NUM_CLASSES,
-                                     train_bn=config.TRAIN_BN,
-                                     fc_layers_size=config.FPN_CLASSIF_FC_LAYERS_SIZE)
+                fpn_classifier_graph_(rpn_rois, mrcnn_feature_maps, input_image_meta, config.POOL_SIZE,
+                                      config.NUM_CLASSES, train_bn=config.TRAIN_BN,
+                                      fc_layers_size=config.FPN_CLASSIF_FC_LAYERS_SIZE)
             detections = DetectionLayer(config)([rpn_rois, mrcnn_class_, mrcnn_bbox_, input_image_meta])
             # get_window_w_config = KL.Lambda(lambda x: get_window(x, config))
             # windows = tf.map_fn(get_window_w_config, input_image)
