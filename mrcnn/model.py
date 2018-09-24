@@ -58,6 +58,9 @@ def tf_unmold_detections(detections, original_image_shape, image_shape, window, 
 
     # Extract boxes, class_ids, scores, and class-specific masks
     boxes = detections[config.DETECTION_MAX_INSTANCES:, :4]
+    print("tf unnmolded")
+    print(boxes)
+    return boxes
 
     # Translate normalized coordinates in the resized image to pixel
     # coordinates in the original image before resizing
