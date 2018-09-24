@@ -58,11 +58,6 @@ def tf_unmold_detections(detections, original_image_shape, image_shape, window, 
 
     # Extract boxes, class_ids, scores, and class-specific masks
     boxes = detections[:, :4]
-    print("tf unnmolded")
-    print(boxes)
-    print(tf.constant([[1.0, 2.0, 2.0, 3.0]] * config.DETECTION_MAX_INSTANCES))
-    tf.assert_equal(boxes.shape, tf.constant([[1.0, 2.0, 2.0, 3.0]] * config.DETECTION_MAX_INSTANCES).shape)
-    return boxes
 
     # Translate normalized coordinates in the resized image to pixel
     # coordinates in the original image before resizing
@@ -80,18 +75,7 @@ def tf_unmold_detections(detections, original_image_shape, image_shape, window, 
     # Convert boxes to pixel coordinates on the original image
     boxes = utils.tf_denorm_boxes(boxes, original_image_shape[:2])
 
-    # Filter out detections with zero area. Happens in early training when
-    # network weights are still random
-    # print(tf.shape(boxes))
-    """
-    exclude_ix = tf.where((boxes[:,2]-boxes[:,0])*(boxes[:,3]-boxes[:,1]) <= 0)[0]
-    if exclude_ix.shape[0] > 0:
-        boxes = np.delete(boxes, exclude_ix, axis=0)
-        class_ids = np.delete(class_ids, exclude_ix, axis=0)
-        scores = np.delete(scores, exclude_ix, axis=0)
-    """
-    #return boxes
-    return tf.constant([[1.0,2.0,2.0,3.0]]*config.DETECTION_MAX_INSTANCES)
+    return boxes
 
 def mold_inputs(images, config):
     """Takes a list of images and modifies them to the format expected
@@ -1344,16 +1328,8 @@ def mrcnn_bbox_loss_graph(target_bbox, target_class_ids, pred_bbox):
 def get_final_predictions(args, config):
     detection, original_image_shape, image_shape, window = args
     # issue in one of the arguments here?
-    print("get final predictions")
-    print("detections {}".format(detection))
-    print("original image shape {}".format(original_image_shape))
-    print("image shape {}".format(image_shape))
-    print("window {}".format(window))
-    print("test {}".format(detection[:,:4]))
-    #return detection[:,:4]
-    #final_rois = tf_unmold_detections(detection, original_image_shape, image_shape, window, config)
-    #return final_rois
-    return tf.constant([[1.0,2.0,2.0,3.0]]*config.DETECTION_MAX_INSTANCES)
+    final_rois = tf_unmold_detections(detection, original_image_shape, image_shape, window, config)
+    return final_rois
 
 def comp_loss_graph(input_gt_boxes, input_image_meta, detections, config):
     """
@@ -1362,61 +1338,10 @@ def comp_loss_graph(input_gt_boxes, input_image_meta, detections, config):
     """
     # issue with detections tensor?
     meta_dict = parse_image_meta_graph(input_image_meta)
-    #results = tf.map_fn(lambda x: get_final_predictions(x, config), (detections, meta_dict["original_image_shape"], meta_dict["image_shape"], meta_dict["window"]), dtype=tf.float32)
+    results = tf.map_fn(lambda x: get_final_predictions(x, config), (detections, meta_dict["original_image_shape"],
+                                                                     meta_dict["image_shape"], meta_dict["window"]),
+                        dtype=tf.float32)
 
-    print("comp loss")
-    #print(detections)
-    #print(detections[:,:,:4])
-    #print(results)
-    #print(input_gt_boxes)
-
-    results = detections[:,:,:4]
-    results = results[:4,:3,:4]
-    input_gt_boxes = input_gt_boxes[:4,:3,:4]
-
-    print("check")
-    print(results)
-    print(input_gt_boxes)
-
-    #print(results[0])
-    #print(results[1])
-    #print(results)
-    """
-    print("overall output")
-    for r in results:
-        print(tf.shape(r[0]))
-        print(tf.shape(r[1]))
-    print("2nd time")
-    for r in results:
-        print(tf.shape(r))
-    print("3rd time")
-    print(tf.shape(results[0]))
-    print(tf.shape(results[1]))
-    print(tf.shape(results[0][0,:,:]))
-    print(tf.shape(results[1][0,:]))
-    print(results[0])
-    print(results[1])
-    print(results)
-    # print(tf.shape(results[0][0]))
-    # print(tf.shape(results[0][1]))
-    # print(tf.shape(results[1][0]))
-    """
-    """
-    ValueError: Shapes
-    must
-    be
-    equal
-    rank, but
-    are
-    3 and 2
-    From
-    merging
-    shape
-    0
-    with other shapes.for 'comp_loss/Shape_6/packed' (op: 'Pack') with input shapes: [8, 2, 4], [8, 2].
-    """
-    #print("4th time")
-    #print(tf.shape(results))
     pred_bboxes = convert_to_kaggle_format(results)
     return tf_competition_metric(input_gt_boxes,pred_bboxes)
 
@@ -2307,8 +2232,6 @@ class MaskRCNN():
                                       fc_layers_size=config.FPN_CLASSIF_FC_LAYERS_SIZE)
             """
             detections = DetectionLayer(config)([rois, mrcnn_class, mrcnn_bbox, input_image_meta])
-            # get_window_w_config = KL.Lambda(lambda x: get_window(x, config))
-            # windows = tf.map_fn(get_window_w_config, input_image)
             comp_loss = KL.Lambda(lambda x: comp_loss_graph(*x, config), name="comp_loss")([input_gt_boxes,
                                                                                             input_image_meta,
                                                                                             detections])
