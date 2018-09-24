@@ -907,7 +907,7 @@ def refine_detections_graph(rois, probs, deltas, window, config):
 
     # Pad with zeros if detections < DETECTION_MAX_INSTANCES
     gap = config.DETECTION_MAX_INSTANCES - tf.shape(detections)[0]
-    detections = tf.pad(detections, [(0, gap), (0, 0)], "CONSTANT")
+    detections = tf.pad(detections, [(0, gap), (0, 0)], "CONSTANT",constant_values=-1)
     return detections
 
 
@@ -2231,7 +2231,7 @@ class MaskRCNN():
                                       fc_layers_size=config.FPN_CLASSIF_FC_LAYERS_SIZE)
             """
             detections = DetectionLayer(config)([rois, mrcnn_class, mrcnn_bbox, input_image_meta])
-            comp_loss = KL.Lambda(lambda x: comp_loss_graph(*x, config), name="comp_loss")([input_gt_boxes,
+            comp_loss = KL.Lambda(lambda x: comp_loss_graph(*x, config), name="comp_loss")([target_bbox,
                                                                                             input_image_meta,
                                                                                             detections])
 
