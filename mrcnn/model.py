@@ -57,7 +57,7 @@ def tf_unmold_detections(detections, original_image_shape, image_shape, window, 
     #N = zero_ix[0] if tf.shape(zero_ix)[0] > 0 else tf.shape(detections)[0]
 
     # Extract boxes, class_ids, scores, and class-specific masks
-    boxes = detections[config.DETECTION_MAX_INSTANCES:, :4]
+    boxes = detections[:, :4]
     print("tf unnmolded")
     print(boxes)
     return boxes
