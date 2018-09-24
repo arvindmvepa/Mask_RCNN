@@ -60,6 +60,8 @@ def tf_unmold_detections(detections, original_image_shape, image_shape, window, 
     boxes = detections[:, :4]
     print("tf unnmolded")
     print(boxes)
+    print(tf.constant([[1.0, 2.0, 2.0, 3.0]] * config.DETECTION_MAX_INSTANCES))
+    tf.assert_equal(boxes.shape, tf.constant([[1.0, 2.0, 2.0, 3.0]] * config.DETECTION_MAX_INSTANCES).shape)
     return boxes
 
     # Translate normalized coordinates in the resized image to pixel
