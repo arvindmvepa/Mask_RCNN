@@ -924,4 +924,8 @@ def tf_denorm_boxes(boxes, shape):
     w = shape[1]
     scale = tf.stack([h-1.0, w-1.0, h-1.0, w-1.0])
     shift = tf.constant([0.0, 0.0, 1.0, 1.0])
-    return tf.cast(tf.round(tf.multiply(boxes, scale) + shift), tf.float32)
+    fn1 = lambda x: x
+    fn2 = lambda x: tf.round(tf.multiply(x, scale) + shift)
+    bool_fn = lambda x : tf.logical_and(tf.logical_and(x[0]==0, x[1]==0), tf.logical_and(x[2]==0, x[3]==0))
+    cond_fn = lambda x: tf.cond(bool_fn(x), fn1, fn2)
+    return tf.cast(tf.map_fn(cond_fn, boxes), tf.float32)
