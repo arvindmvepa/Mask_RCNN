@@ -1300,29 +1300,34 @@ def get_final_predictions(args, config):
     print("image shape {}".format(image_shape))
     print("window {}".format(window))
     print("test {}".format(detection[:,:4]))
-    return detection[:,:4]
-    final_rois = tf_unmold_detections(detection, original_image_shape, image_shape, window, config)
-    return final_rois
-    #return tf.constant([[1.0,2.0,2.0,3.0]]*config.DETECTION_MAX_INSTANCES)
+    #return detection[:,:4]
+    #final_rois = tf_unmold_detections(detection, original_image_shape, image_shape, window, config)
+    #return final_rois
+    return tf.constant([[1.0,2.0,2.0,3.0]]*config.DETECTION_MAX_INSTANCES)
 
 def comp_loss_graph(input_gt_boxes, input_image_meta, detections, config):
     """
     Loss for Mask R-CNN bounding box refinement.
 
     """
+    # issue with detections tensor?
     meta_dict = parse_image_meta_graph(input_image_meta)
-    #results = tf.map_fn(lambda x: get_final_predictions(x, config), (detections, meta_dict["original_image_shape"], meta_dict["image_shape"], meta_dict["window"]), dtype=tf.float32)
+    results = tf.map_fn(lambda x: get_final_predictions(x, config), (detections, meta_dict["original_image_shape"], meta_dict["image_shape"], meta_dict["window"]), dtype=tf.float32)
+
     print("comp loss")
-    print(detections)
-    print(detections[:,:,:4])
+    #print(detections)
+    #print(detections[:,:,:4])
+    print(results)
     print(input_gt_boxes)
 
-    results = detections[:,:,:4]
+    #results = detections[:,:,:4]
     results = results[:4,:3,:4]
     input_gt_boxes = input_gt_boxes[:4,:3,:4]
+
     print("check")
     print(results)
     print(input_gt_boxes)
+
     #print(results[0])
     #print(results[1])
     #print(results)
