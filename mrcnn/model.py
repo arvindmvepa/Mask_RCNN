@@ -73,7 +73,7 @@ def tf_unmold_detections(detections, original_image_shape, image_shape, window, 
     # Convert boxes to normalized coordinates on the window
     boxes = tf.divide(boxes - shift, scale)
     # Convert boxes to pixel coordinates on the original image
-    boxes = utils.tf_denorm_boxes(boxes, original_image_shape[:2])
+    boxes = utils.tf_denorm_boxes(boxes, image_shape[:2])
 
     return boxes
 
@@ -822,7 +822,7 @@ def refine_detections_graph(rois, probs, deltas, window, config):
         probs: [N, num_classes]. Class probabilities.
         deltas: [N, num_classes, (dy, dx, log(dh), log(dw))]. Class-specific
                 bounding box deltas.
-        window: (y1, x1, y2, x2) in image coordinates. The part of the image
+        window: (y1, x1, y2, x2) in normalized coordinates. The part of the image
             that contains the image excluding the padding.
 
     Returns detections shaped: [N, (y1, x1, y2, x2, class_id, score)] where
@@ -1336,7 +1336,6 @@ def comp_loss_graph(input_gt_boxes, input_image_meta, detections, config):
     Loss for Mask R-CNN bounding box refinement.
 
     """
-    # issue with detections tensor?
     meta_dict = parse_image_meta_graph(input_image_meta)
     results = tf.map_fn(lambda x: get_final_predictions(x, config), (detections, meta_dict["original_image_shape"],
                                                                      meta_dict["image_shape"], meta_dict["window"]),
