@@ -1315,6 +1315,7 @@ def comp_loss_graph(input_gt_boxes, input_image_meta, detections, config):
     print("comp loss")
     print(detections)
     print(detections[:,:,:4])
+    print(input_gt_boxes)
     results = detections[:,:,:4]
     #print(results[0])
     #print(results[1])
