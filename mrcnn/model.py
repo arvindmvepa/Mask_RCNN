@@ -2184,6 +2184,9 @@ class MaskRCNN():
 
         # Add L2 Regularization
         # Skip gamma and beta weights of batch normalization layers.
+        print("debug reg losses")
+        print([w for w in self.keras_model.trainable_weights
+               if 'gamma' not in w.name and 'beta' not in w.name])
         reg_losses = [
             keras.regularizers.l2(self.config.WEIGHT_DECAY)(w) / tf.cast(tf.size(w), tf.float32)
             for w in self.keras_model.trainable_weights
@@ -2220,8 +2223,11 @@ class MaskRCNN():
         # of the inner model because they have the weights.
         layers = keras_model.inner_model.layers if hasattr(keras_model, "inner_model")\
             else keras_model.layers
-
+        print("debug trainable")
+        print("layer regex {}".format(layer_regex))
         for layer in layers:
+            print(layer)
+
             # Is the layer a model?
             if layer.__class__.__name__ == 'Model':
                 print("In model: ", layer.name)
